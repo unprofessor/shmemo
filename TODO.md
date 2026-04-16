@@ -7,7 +7,7 @@
   - Add a unified logging system to replace `eprintln!` calls
 - [x] Argument to suppress all `memo` messages (even errors)
   - e.g. `--quiet`
-- [ ] Argument to consider environment variables in cache key
+- [x] Argument to consider environment variables in cache key
   - Variables must be explicitly listed by user
   - e.g. `--env VAR1,VAR2,VAR3`
   - Short form: `-e VAR1,VAR2,VAR3`

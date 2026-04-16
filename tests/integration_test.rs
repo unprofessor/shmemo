@@ -539,6 +539,7 @@ fn test_cache_file_structure() {
     );
     assert!(json["exit_code"].is_number());
     assert_eq!(json["exit_code"].as_i64().unwrap(), 0);
+    assert!(json["env"].is_object());
     assert!(json["timestamp"].is_string());
     assert!(json["digest"].is_string());
     assert_eq!(json["digest"].as_str().unwrap(), digest);
@@ -610,6 +611,64 @@ fn test_special_characters() {
         .stdout("hello \"world\" $USER\n");
 }
 
+// New test: Env vars
+#[test]
+fn test_env_vars() {
+    let env = TestEnv::new();
+
+    // Command 1: without FOO set
+    env.cmd()
+        .arg("-e")
+        .arg("FOO")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout("test\n");
+
+    // Command 2: with FOO=bar
+    env.cmd()
+        .env("FOO", "bar")
+        .arg("-e")
+        .arg("FOO")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout("test\n");
+
+    // Should have 2 files, missing FOO and FOO=bar
+    env.assert_cache_entry_count(2);
+
+    // Command 3: run command 2 again, should be a hit (no new entry)
+    env.cmd()
+        .env("FOO", "bar")
+        .arg("-e")
+        .arg("FOO")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout("test\n");
+
+    env.assert_cache_entry_count(2);
+
+    // Command 4: Different working directory shouldn't create a new entry anymore
+    let diff_dir = env.cache_path().join("different_dir");
+    std::fs::create_dir_all(&diff_dir).unwrap();
+    env.cmd()
+        .current_dir(&diff_dir)
+        .env("FOO", "bar")
+        .arg("-e")
+        .arg("FOO")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout("test\n");
+
+    env.assert_cache_entry_count(2);
+}
 // Additional Test: Different commands create different cache entries
 #[test]
 fn test_different_cache_entries() {
@@ -619,8 +678,8 @@ fn test_different_cache_entries() {
     env.cmd().arg("echo").arg("bar").assert().success();
     env.cmd().arg("echo").arg("baz").assert().success();
 
-    // Should have 9 files (3 commands × 3 files each)
-    env.assert_cache_file_count(9);
+    // Should have 3 directories
+    env.assert_cache_entry_count(3);
     env.assert_valid_cache_structure();
 }
 

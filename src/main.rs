@@ -53,7 +53,7 @@ use cache::{
 };
 use chrono::Utc;
 use clap::Parser;
-use digest::compute_digest_for_args;
+use digest::compute_digest;
 use error::Result;
 use executor::{build_command_string, execute_and_stream, execute_direct};
 use log::{debug, error, info};
@@ -92,6 +92,15 @@ struct Cli {
     /// Suppress all memo messages (even errors)
     #[arg(short, long, help = "Suppress all memo messages (even errors)")]
     quiet: bool,
+
+    /// Environment variables to consider for the cache key
+    #[arg(
+        short,
+        long,
+        value_delimiter = ',',
+        help = "Environment variables to consider for the cache key"
+    )]
+    env: Option<Vec<String>>,
 
     /// Command to execute/memoize
     #[arg(trailing_var_arg = true, required = true, allow_hyphen_values = true)]
@@ -142,12 +151,24 @@ fn run(args: Cli) -> Result<i32> {
     // Clean up any orphaned temp directories from previous crashes
     cleanup_temp_dirs(&cache_dir)?;
 
-    // Get current working directory
-    let cwd = std::env::current_dir()?.to_string_lossy().to_string();
+    // Collect environment variables for cache key
+    let mut env_vars = std::collections::BTreeMap::new();
+    if let Some(vars) = args.env {
+        debug!(
+            "Capturing {} environment variables for cache key",
+            vars.len()
+        );
+        for var in vars {
+            let value = std::env::var(&var).ok();
+            log::trace!("Captured env var {} = {:?}", var, value);
+            env_vars.insert(var.clone(), value);
+        }
+    }
 
     // Build command string for display and compute digest from argv.
     let command_string = build_command_string(&args.command);
-    let digest = compute_digest_for_args(&args.command, &cwd)?;
+    debug!("Computing digest for command: {:?}", args.command);
+    let digest = compute_digest(&args.command, &env_vars)?;
 
     // Check if memo exists
     if memo_complete(&cache_dir, &digest) {
@@ -190,7 +211,7 @@ fn run(args: Cli) -> Result<i32> {
         // Create memo metadata
         let memo = Memo {
             cmd: args.command.clone(),
-            cwd: cwd.clone(),
+            env: env_vars,
             exit_code: result.exit_code,
             timestamp,
             digest: digest.clone(),

@@ -1,22 +1,24 @@
 //! Digest computation for cache key generation
 //!
 //! This module handles SHA-256 digest computation for command memoization.
-//! The digest includes both the command arguments and the current working directory
-//! to ensure different contexts produce different cache entries.
+//! The digest includes both the command arguments and explicitly passed environment
+//! variables to ensure different contexts produce different cache entries.
+
+use std::collections::BTreeMap;
 
 use crate::error::Result;
 use sha2::{Digest, Sha256};
 
-/// Compute SHA-256 digest for command arguments and working directory
+/// Compute SHA-256 digest for command arguments and environment variables
 ///
-/// The digest is computed from a JSON encoding of the arguments and working directory
-/// to avoid collisions. For example, `["echo", "a b"]` vs `["echo", "a", "b"]` will
+/// The digest is computed from a JSON encoding of the arguments and environment
+/// variables to avoid collisions. For example, `["echo", "a b"]` vs `["echo", "a", "b"]` will
 /// produce different digests.
 ///
 /// # Arguments
 ///
 /// * `args` - Command arguments (including the command itself)
-/// * `cwd` - Current working directory
+/// * `env` - Environment variables map
 ///
 /// # Returns
 ///
@@ -25,20 +27,22 @@ use sha2::{Digest, Sha256};
 /// # Examples
 ///
 /// ```
-/// # use memo::digest::compute_digest_for_args;
+/// # use memo::digest::compute_digest;
+/// # use std::collections::BTreeMap;
 /// let args = vec!["echo".to_string(), "hello".to_string()];
-/// let digest = compute_digest_for_args(&args, "/home/user").unwrap();
+/// let env = BTreeMap::new();
+/// let digest = compute_digest(&args, &env).unwrap();
 /// assert_eq!(digest.len(), 64);
 /// assert!(digest.chars().all(|c| c.is_ascii_hexdigit()));
 /// ```
-pub fn compute_digest_for_args(args: &[String], cwd: &str) -> Result<String> {
-    // Hash a canonical encoding of argv and cwd to avoid collisions like:
+pub fn compute_digest(args: &[String], env: &BTreeMap<String, Option<String>>) -> Result<String> {
+    // Hash a canonical encoding of argv and env to avoid collisions like:
     // ["echo", "a b"] vs ["echo", "a", "b"].
     let encoded_args = serde_json::to_vec(args)?;
-    let encoded_cwd = serde_json::to_vec(cwd)?;
+    let encoded_env = serde_json::to_vec(env)?;
     let mut hasher = Sha256::new();
     hasher.update(&encoded_args);
-    hasher.update(&encoded_cwd);
+    hasher.update(&encoded_env);
     let result = hasher.finalize();
     Ok(hex::encode(result))
 }
@@ -48,10 +52,8 @@ mod tests {
     use super::*;
     use shell_words::split;
 
-    const TEST_CWD: &str = "/test/cwd";
-
     fn digest_for_args(args: &[String]) -> String {
-        compute_digest_for_args(args, TEST_CWD).expect("failed to compute digest")
+        compute_digest(args, &BTreeMap::new()).expect("failed to compute digest")
     }
 
     fn digest_for_command(command: &str) -> String {
@@ -99,7 +101,6 @@ mod tests {
     fn test_digest_empty_args_known_value() {
         let digest = digest_for_command("");
         assert_eq!(digest.len(), 64);
-        // Hash includes cwd, so value differs from args-only hash
     }
 
     #[test]
@@ -124,18 +125,38 @@ mod tests {
     }
 
     #[test]
-    fn test_digest_different_cwd_different_output() {
+    fn test_digest_different_env_different_output() {
         let args: Vec<String> = vec!["echo".into(), "hello".into()];
-        let digest1 = compute_digest_for_args(&args, "/path/one").unwrap();
-        let digest2 = compute_digest_for_args(&args, "/path/two").unwrap();
+
+        let mut env1 = BTreeMap::new();
+        env1.insert("VAR".to_string(), Some("one".to_string()));
+        let digest1 = compute_digest(&args, &env1).unwrap();
+
+        let mut env2 = BTreeMap::new();
+        env2.insert("VAR".to_string(), Some("two".to_string()));
+        let digest2 = compute_digest(&args, &env2).unwrap();
+
+        let mut env3 = BTreeMap::new();
+        env3.insert("VAR".to_string(), None);
+        let digest3 = compute_digest(&args, &env3).unwrap();
+
         assert_ne!(digest1, digest2);
+        assert_ne!(digest2, digest3);
+        assert_ne!(digest1, digest3);
     }
 
     #[test]
-    fn test_digest_same_cwd_same_output() {
+    fn test_digest_same_env_same_output() {
         let args: Vec<String> = vec!["echo".into(), "hello".into()];
-        let digest1 = compute_digest_for_args(&args, "/same/path").unwrap();
-        let digest2 = compute_digest_for_args(&args, "/same/path").unwrap();
+
+        let mut env1 = BTreeMap::new();
+        env1.insert("VAR".to_string(), Some("one".to_string()));
+        let digest1 = compute_digest(&args, &env1).unwrap();
+
+        let mut env2 = BTreeMap::new();
+        env2.insert("VAR".to_string(), Some("one".to_string()));
+        let digest2 = compute_digest(&args, &env2).unwrap();
+
         assert_eq!(digest1, digest2);
     }
 
