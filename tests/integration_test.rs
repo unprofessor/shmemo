@@ -90,7 +90,7 @@ impl TestEnv {
         for _ in 0..n {
             let child = std::process::Command::new(&bin)
                 .env("XDG_CACHE_HOME", self.cache_path())
-                .arg("-v")
+                .arg("-vv")
                 .arg("bash")
                 .arg("-c")
                 .arg("sleep 1; echo hello")

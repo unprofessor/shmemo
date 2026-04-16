@@ -208,7 +208,7 @@ pub fn commit_cache_dir(
 /// Strategy: delete any temp directory matching `*.tmp.*` whose modified time
 /// is older than 24 hours. This avoids deleting temp dirs for currently running
 /// processes while preventing unbounded growth from crashes.
-pub fn cleanup_temp_dirs(cache_dir: &Path, verbose: bool) -> io::Result<()> {
+pub fn cleanup_temp_dirs(cache_dir: &Path) -> io::Result<()> {
     if !cache_dir.exists() {
         return Ok(());
     }
@@ -232,24 +232,14 @@ pub fn cleanup_temp_dirs(cache_dir: &Path, verbose: bool) -> io::Result<()> {
         }
 
         let Some(cutoff) = cutoff else {
-            if verbose {
-                eprintln!(
-                    ":: memo :: skipping temp dir {} (no cutoff)",
-                    path.display()
-                );
-            }
+            log::debug!("skipping temp dir {} (no cutoff)", path.display());
             continue;
         };
 
         let metadata = match fs::metadata(&path) {
             Ok(m) => m,
             Err(_) => {
-                if verbose {
-                    eprintln!(
-                        ":: memo :: skipping temp dir {} (metadata error)",
-                        path.display()
-                    );
-                }
+                log::debug!("skipping temp dir {} (metadata error)", path.display());
                 continue;
             }
         };
@@ -257,23 +247,16 @@ pub fn cleanup_temp_dirs(cache_dir: &Path, verbose: bool) -> io::Result<()> {
         let modified = match metadata.modified() {
             Ok(m) => m,
             Err(_) => {
-                if verbose {
-                    eprintln!(
-                        ":: memo :: skipping temp dir {} (modified time error)",
-                        path.display()
-                    );
-                }
+                log::debug!("skipping temp dir {} (modified time error)", path.display());
                 continue;
             }
         };
 
         if modified < cutoff {
-            if verbose {
-                eprintln!(":: memo :: cleaning up temp dir {}", path.display());
-            }
+            log::debug!("cleaning up temp dir {}", path.display());
             let _ = fs::remove_dir_all(&path);
-        } else if verbose {
-            eprintln!(":: memo :: keeping temp dir {} (recent)", path.display());
+        } else {
+            log::debug!("keeping temp dir {} (recent)", path.display());
         }
     }
 

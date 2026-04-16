@@ -44,6 +44,7 @@ mod constants;
 mod digest;
 mod error;
 mod executor;
+mod logger;
 mod memo;
 
 use cache::{
@@ -55,6 +56,7 @@ use clap::Parser;
 use digest::compute_digest_for_args;
 use error::Result;
 use executor::{build_command_string, execute_and_stream, execute_direct};
+use log::{debug, error, info};
 use memo::Memo;
 use std::fs;
 use std::io::{self, Write};
@@ -84,8 +86,8 @@ that output sensitive information such as:\n\
     Use MEMO_DISABLE=1 to bypass caching for individual commands with sensitive output.")]
 struct Cli {
     /// Print memoization information
-    #[arg(short, long)]
-    verbose: bool,
+    #[arg(short, long, action = clap::ArgAction::Count, help = "Increase verbosity (-v, -vv, -vvv)")]
+    verbose: u8,
 
     /// Command to execute/memoize
     #[arg(trailing_var_arg = true, required = true, allow_hyphen_values = true)]
@@ -105,11 +107,17 @@ fn main() {
 fn run() -> Result<i32> {
     let args = Cli::parse();
 
+    let level = match args.verbose {
+        0 => log::LevelFilter::Error,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
+    };
+    logger::init(level).expect("Failed to initialize logger");
+
     // Check if memoization is disabled
     if is_memo_disabled() {
-        if args.verbose {
-            eprintln!(":: memo :: disabled");
-        }
+        info!("disabled");
 
         // Convert Vec<String> to Vec<&str>
         let cmd_args: Vec<&str> = args.command.iter().map(|s| s.as_str()).collect();
@@ -124,7 +132,7 @@ fn run() -> Result<i32> {
     ensure_cache_dir(&cache_dir)?;
 
     // Clean up any orphaned temp directories from previous crashes
-    cleanup_temp_dirs(&cache_dir, args.verbose)?;
+    cleanup_temp_dirs(&cache_dir)?;
 
     // Get current working directory
     let cwd = std::env::current_dir()?.to_string_lossy().to_string();
@@ -136,9 +144,7 @@ fn run() -> Result<i32> {
     // Check if memo exists
     if memo_complete(&cache_dir, &digest) {
         // Cache hit - replay
-        if args.verbose {
-            eprintln!(":: memo :: hit `{command_string}` => {digest}");
-        }
+        info!("hit `{command_string}` => {digest}");
 
         // Read metadata
         let memo = read_memo_metadata(&cache_dir, &digest)?;
@@ -151,9 +157,7 @@ fn run() -> Result<i32> {
         Ok(memo.exit_code)
     } else {
         // Cache miss - execute and memoize
-        if args.verbose {
-            eprintln!(":: memo :: miss `{command_string}` => {digest}");
-        }
+        info!("miss `{command_string}` => {digest}");
 
         let timestamp = Utc::now().to_rfc3339();
 
@@ -169,10 +173,10 @@ fn run() -> Result<i32> {
 
         // Report any file write errors
         if let Some(path) = &result.stdout_error {
-            eprintln!(":: memo :: ERROR: could not write {}", path.display());
+            error!("could not write {}", path.display());
         }
         if let Some(path) = &result.stderr_error {
-            eprintln!(":: memo :: ERROR: could not write {}", path.display());
+            error!("could not write {}", path.display());
         }
 
         // Create memo metadata
@@ -195,12 +199,10 @@ fn run() -> Result<i32> {
         // If another process already committed, that's fine - we just clean up
         let committed = commit_cache_dir(&mut temp_dir, &cache_dir, &digest)?;
 
-        if args.verbose {
-            if committed {
-                eprintln!(":: memo :: committed temp dir {}", temp_dir.path.display());
-            } else {
-                eprintln!(":: memo :: dropping temp dir {}", temp_dir.path.display());
-            }
+        if committed {
+            debug!("committed temp dir {}", temp_dir.path.display());
+        } else {
+            debug!("dropping temp dir {}", temp_dir.path.display());
         }
 
         // Exit with command's exit code (output already streamed to console)
