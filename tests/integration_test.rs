@@ -664,6 +664,19 @@ fn test_verbose_short_flag() {
 
 // Additional Test: Mixed stdout/stderr with exit code
 #[test]
+fn test_quiet_mode() {
+    let env = TestEnv::new();
+
+    // With --quiet, a missing command should exit with 1 but NOT print a :: memo :: ERROR
+    env.cmd()
+        .arg("--quiet")
+        .arg("this_command_does_not_exist_xyz123")
+        .assert()
+        .failure()
+        .stderr(predicate::str::is_empty());
+}
+
+#[test]
 fn test_mixed_output_with_error() {
     let env = TestEnv::new();
 

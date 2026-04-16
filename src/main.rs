@@ -89,32 +89,40 @@ struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count, help = "Increase verbosity (-v, -vv, -vvv)")]
     verbose: u8,
 
+    /// Suppress all memo messages (even errors)
+    #[arg(short, long, help = "Suppress all memo messages (even errors)")]
+    quiet: bool,
+
     /// Command to execute/memoize
     #[arg(trailing_var_arg = true, required = true, allow_hyphen_values = true)]
     command: Vec<String>,
 }
 
 fn main() {
-    match run() {
+    let args = Cli::parse();
+
+    let level = if args.quiet {
+        log::LevelFilter::Off
+    } else {
+        match args.verbose {
+            0 => log::LevelFilter::Error,
+            1 => log::LevelFilter::Info,
+            2 => log::LevelFilter::Debug,
+            _ => log::LevelFilter::Trace,
+        }
+    };
+    logger::init(level).expect("Failed to initialize logger");
+
+    match run(args) {
         Ok(exit_code) => process::exit(exit_code),
         Err(e) => {
-            eprintln!(":: memo :: ERROR: {}", e);
+            error!("{}", e);
             process::exit(1);
         }
     }
 }
 
-fn run() -> Result<i32> {
-    let args = Cli::parse();
-
-    let level = match args.verbose {
-        0 => log::LevelFilter::Error,
-        1 => log::LevelFilter::Info,
-        2 => log::LevelFilter::Debug,
-        _ => log::LevelFilter::Trace,
-    };
-    logger::init(level).expect("Failed to initialize logger");
-
+fn run(args: Cli) -> Result<i32> {
     // Check if memoization is disabled
     if is_memo_disabled() {
         info!("disabled");

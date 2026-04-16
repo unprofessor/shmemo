@@ -5,7 +5,7 @@
 - [x] Expand `verbose` flag to support multiple levels
   - e.g. `-v` for info, `-vv` for debug, `-vvv` for trace
   - Add a unified logging system to replace `eprintln!` calls
-- [ ] Argument to suppress all `memo` messages (even errors)
+- [x] Argument to suppress all `memo` messages (even errors)
   - e.g. `--quiet`
 - [ ] Argument to consider environment variables in cache key
   - Variables must be explicitly listed by user
