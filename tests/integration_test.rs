@@ -834,3 +834,71 @@ fn test_argv_collision_avoidance() {
     // Verify we have two distinct cache entries
     env.assert_cache_entry_count(2);
 }
+
+#[test]
+fn test_ttl_invalid_format() {
+    let env = TestEnv::new();
+    env.cmd()
+        .arg("--ttl")
+        .arg("invalid")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid TTL: invalid"));
+}
+
+#[test]
+fn test_ttl_cache_hit_within_duration() {
+    let env = TestEnv::new();
+
+    // First run - miss
+    env.cmd()
+        .arg("--ttl")
+        .arg("10m")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test"));
+
+    // Second run - hit
+    env.cmd()
+        .arg("-vv")
+        .arg("--ttl")
+        .arg("10m")
+        .arg("echo")
+        .arg("test")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("hit `echo test`"));
+}
+
+#[test]
+fn test_ttl_cache_expiration() {
+    let env = TestEnv::new();
+
+    // First run with 1s TTL
+    env.cmd()
+        .arg("--ttl")
+        .arg("1s")
+        .arg("echo")
+        .arg("expiring")
+        .assert()
+        .success();
+
+    // Sleep for 2 seconds to let cache expire
+    std::thread::sleep(std::time::Duration::from_secs(2));
+
+    // Second run - should be a miss because it expired
+    env.cmd()
+        .arg("-vv")
+        .arg("--ttl")
+        .arg("1s")
+        .arg("echo")
+        .arg("expiring")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("expired `echo expiring`"))
+        .stderr(predicate::str::contains("miss `echo expiring`"));
+}

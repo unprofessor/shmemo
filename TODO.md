@@ -30,7 +30,7 @@
   - Default to standard cache directory
     - `$XDG_CACHE_HOME/memo`
     - Fallback to `$HOME/.cache/memo`
-- [ ] Argument to set cache entry TTL (time-to-live)
+- [x] Argument to set cache entry TTL (time-to-live)
   - e.g. `--ttl 1h` to set cache expiration to 1 hour
   - Support human-readable formats like `1h`, `30m`, `1d`
   - Default TTL is infinite (no expiration)

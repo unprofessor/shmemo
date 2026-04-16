@@ -21,7 +21,7 @@ network calls), when you want fast repeatable runs during development.
 ### From source (recommended)
 
 ```bash
-cargo install --path .
+cargo install --path . --locked
 ```
 
 ### Build a release binary

@@ -385,6 +385,7 @@ mod tests {
             exit_code: 0,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest.to_string(),
+            expires_at: None,
         };
         let stdout = b"test output\n";
         let stderr = b"test error\n";
@@ -412,6 +413,7 @@ mod tests {
             exit_code: 0,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest.to_string(),
+            expires_at: None,
         };
 
         write_memo(&cache_dir, digest, &memo, b"", b"").unwrap();
@@ -433,6 +435,7 @@ mod tests {
             exit_code: 0,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest.to_string(),
+            expires_at: None,
         };
         let binary_data = vec![0x00, 0x01, 0xFF, 0xFE, 0x7F];
 
@@ -466,6 +469,7 @@ mod tests {
             exit_code: 0,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest1.to_string(),
+            expires_at: None,
         };
 
         let memo2 = Memo {
@@ -474,6 +478,7 @@ mod tests {
             exit_code: 1,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest2.to_string(),
+            expires_at: None,
         };
 
         write_memo(&cache_dir, digest1, &memo1, b"one\n", b"").unwrap();
@@ -502,6 +507,7 @@ mod tests {
             exit_code: 0,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest.to_string(),
+            expires_at: None,
         };
 
         write_memo(&cache_dir, digest, &memo, b"out", b"err").unwrap();
@@ -536,6 +542,7 @@ mod tests {
             exit_code: 0,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest.to_string(),
+            expires_at: None,
         };
 
         // Create 1MB of output
@@ -560,6 +567,7 @@ mod tests {
             exit_code: 0,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest.to_string(),
+            expires_at: None,
         };
 
         write_memo(&cache_dir, digest, &memo, b"output data", b"error data").unwrap();
@@ -581,6 +589,7 @@ mod tests {
             exit_code: 0,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest.to_string(),
+            expires_at: None,
         };
 
         write_memo(&cache_dir, digest, &memo, b"output data", b"error data").unwrap();
@@ -602,6 +611,7 @@ mod tests {
             exit_code: 42,
             timestamp: "2025-12-22T01:51:52.369Z".to_string(),
             digest: digest.to_string(),
+            expires_at: None,
         };
 
         write_memo(&cache_dir, digest, &memo, b"large output here", b"errors").unwrap();

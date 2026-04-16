@@ -25,6 +25,10 @@ pub enum MemoError {
     /// Invalid command
     #[error("Invalid command: {0}")]
     InvalidCommand(String),
+
+    /// Invalid TTL format
+    #[error("Invalid TTL: {0}")]
+    InvalidTtl(String),
 }
 
 /// Result type alias for memo operations

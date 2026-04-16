@@ -93,6 +93,10 @@ struct Cli {
     #[arg(short, long, help = "Suppress all memo messages (even errors)")]
     quiet: bool,
 
+    /// Cache expiration time (e.g. "1h 30m", "10s")
+    #[arg(long, help = "Time to live for cache entry (e.g. \"1h 30m\")")]
+    ttl: Option<String>,
+
     /// Environment variables to consider for the cache key
     #[arg(
         short,
@@ -161,6 +165,16 @@ fn run(args: Cli) -> Result<i32> {
         return Ok(0);
     }
 
+    // Parse TTL if provided (fail fast before any real work)
+    let parsed_ttl = match args.ttl {
+        Some(ttl_str) => {
+            let duration = humantime::parse_duration(&ttl_str)
+                .map_err(|_| crate::error::MemoError::InvalidTtl(ttl_str.clone()))?;
+            Some(duration)
+        }
+        None => None,
+    };
+
     ensure_cache_dir(&cache_dir)?;
 
     // Clean up any orphaned temp directories from previous crashes
@@ -187,69 +201,91 @@ fn run(args: Cli) -> Result<i32> {
 
     // Check if memo exists
     if memo_complete(&cache_dir, &digest) {
-        // Cache hit - replay
-        info!("hit `{command_string}` => {digest}");
-
         // Read metadata
-        let memo = read_memo_metadata(&cache_dir, &digest)?;
+        match read_memo_metadata(&cache_dir, &digest) {
+            Ok(memo) => {
+                if memo.is_expired() {
+                    info!("expired `{command_string}` => {digest}");
+                    // Delete the expired directory to avoid DirectoryNotEmpty errors on next commit
+                    let digest_dir = cache_dir.join(&digest);
+                    if let Err(e) = std::fs::remove_dir_all(&digest_dir) {
+                        log::warn!("Failed to delete expired cache directory: {}", e);
+                    }
+                } else {
+                    // Cache hit - replay
+                    info!("hit `{command_string}` => {digest}");
 
-        // Stream output to stdout/stderr
-        stream_stdout(&cache_dir, &digest, io::stdout())?;
-        stream_stderr(&cache_dir, &digest, io::stderr())?;
+                    // Stream output to stdout/stderr
+                    stream_stdout(&cache_dir, &digest, io::stdout())?;
+                    stream_stderr(&cache_dir, &digest, io::stderr())?;
 
-        // Exit with stored exit code
-        Ok(memo.exit_code)
-    } else {
-        // Cache miss - execute and memoize
-        info!("miss `{command_string}` => {digest}");
-
-        let timestamp = Utc::now().to_rfc3339();
-
-        // Create a temp directory for this process to write cache files
-        let mut temp_dir = create_temp_cache_dir(&cache_dir, &digest)?;
-        let (json_path, out_path, err_path) = temp_dir.get_paths();
-
-        // Convert Vec<String> to Vec<&str>
-        let cmd_args: Vec<&str> = args.command.iter().map(|s| s.as_str()).collect();
-
-        // Execute command and stream to files AND console simultaneously
-        let result = execute_and_stream(&cmd_args, &out_path, &err_path)?;
-
-        // Report any file write errors
-        if let Some(path) = &result.stdout_error {
-            error!("could not write {}", path.display());
+                    // Exit with stored exit code
+                    return Ok(memo.exit_code);
+                }
+            }
+            Err(e) => {
+                log::warn!("Failed to read metadata for {}: {}", digest, e);
+            }
         }
-        if let Some(path) = &result.stderr_error {
-            error!("could not write {}", path.display());
-        }
-
-        // Create memo metadata
-        let memo = Memo {
-            cmd: args.command.clone(),
-            env: env_vars,
-            exit_code: result.exit_code,
-            timestamp,
-            digest: digest.clone(),
-        };
-
-        // Write metadata to JSON
-        let json = serde_json::to_string_pretty(&memo)?;
-        {
-            let mut f = fs::File::create(&json_path)?;
-            f.write_all(json.as_bytes())?;
-        }
-
-        // Atomically commit the temp directory to the final location
-        // If another process already committed, that's fine - we just clean up
-        let committed = commit_cache_dir(&mut temp_dir, &cache_dir, &digest)?;
-
-        if committed {
-            debug!("committed temp dir {}", temp_dir.path.display());
-        } else {
-            debug!("dropping temp dir {}", temp_dir.path.display());
-        }
-
-        // Exit with command's exit code (output already streamed to console)
-        Ok(result.exit_code)
     }
+
+    // Cache miss - execute and memoize
+    info!("miss `{command_string}` => {digest}");
+
+    let now = Utc::now();
+    let timestamp = now.to_rfc3339();
+
+    let expires_at = parsed_ttl.map(|duration| {
+        let chrono_duration =
+            chrono::Duration::from_std(duration).expect("Duration is too large for chrono");
+        (now + chrono_duration).to_rfc3339()
+    });
+
+    // Create a temp directory for this process to write cache files
+    let mut temp_dir = create_temp_cache_dir(&cache_dir, &digest)?;
+    let (json_path, out_path, err_path) = temp_dir.get_paths();
+
+    // Convert Vec<String> to Vec<&str>
+    let cmd_args: Vec<&str> = args.command.iter().map(|s| s.as_str()).collect();
+
+    // Execute command and stream to files AND console simultaneously
+    let result = execute_and_stream(&cmd_args, &out_path, &err_path)?;
+
+    // Report any file write errors
+    if let Some(path) = &result.stdout_error {
+        error!("could not write {}", path.display());
+    }
+    if let Some(path) = &result.stderr_error {
+        error!("could not write {}", path.display());
+    }
+
+    // Create memo metadata
+    let memo = Memo {
+        cmd: args.command.clone(),
+        env: env_vars,
+        exit_code: result.exit_code,
+        timestamp,
+        expires_at,
+        digest: digest.clone(),
+    };
+
+    // Write metadata to JSON
+    let json = serde_json::to_string_pretty(&memo)?;
+    {
+        let mut f = fs::File::create(&json_path)?;
+        f.write_all(json.as_bytes())?;
+    }
+
+    // Atomically commit the temp directory to the final location
+    // If another process already committed, that's fine - we just clean up
+    let committed = commit_cache_dir(&mut temp_dir, &cache_dir, &digest)?;
+
+    if committed {
+        debug!("committed temp dir {}", temp_dir.path.display());
+    } else {
+        debug!("dropping temp dir {}", temp_dir.path.display());
+    }
+
+    // Exit with command's exit code (output already streamed to console)
+    Ok(result.exit_code)
 }
