@@ -1,4 +1,4 @@
-//! # Memo - Command Memoization Tool
+//! # Shmemo - Command Memoization Tool
 //!
 //! Memo is a command-line tool that memoizes (caches) shell command execution results.
 //! When you run a command through memo, it stores the stdout, stderr, and exit code.
@@ -12,7 +12,7 @@
 //!   - `<digest>/meta.json` - Metadata (command, exit code, timestamp)
 //!   - `<digest>/stdout` - Captured stdout
 //!   - `<digest>/stderr` - Captured stderr
-//! - **Location**: `$XDG_CACHE_HOME/memo/` (defaults to `~/.cache/memo/`)
+//! - **Location**: `$XDG_CACHE_HOME/shmemo/` (defaults to `~/.cache/shmemo/`)
 //!
 //! ## Usage Examples
 //!
@@ -64,7 +64,7 @@ use std::process;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "memo",
+    name = "shmemo",
     version = env!("VERGEN_GIT_DESCRIBE"),
     long_version = concat!(
         env!("VERGEN_GIT_DESCRIBE"),
@@ -82,8 +82,8 @@ that output sensitive information such as:\n\
     - Passwords or credentials\n\
     - Private keys or certificates\n\
     - Personally identifiable information\n\n\
-    Cached files are stored in ~/.cache/memo/ and may be accessible to other users on shared systems.\n\
-    Use MEMO_DISABLE=1 to bypass caching for individual commands with sensitive output.")]
+    Cached files are stored in ~/.cache/shmemo/ and may be accessible to other users on shared systems.\n\
+    Use SHMEMO_DISABLE=1 to bypass caching for individual commands with sensitive output.")]
 struct Cli {
     /// Print memoization information
     #[arg(short, long, action = clap::ArgAction::Count, help = "Increase verbosity (-v, -vv, -vvv)")]

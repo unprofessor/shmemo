@@ -5,7 +5,7 @@
 - [x] Expand `verbose` flag to support multiple levels
   - e.g. `-v` for info, `-vv` for debug, `-vvv` for trace
   - Add a unified logging system to replace `eprintln!` calls
-- [x] Argument to suppress all `memo` messages (even errors)
+- [x] Argument to suppress all `shmemo` messages (even errors)
   - e.g. `--quiet`
 - [x] Argument to consider environment variables in cache key
   - Variables must be explicitly listed by user
@@ -45,8 +45,8 @@
   - e.g. `--config /path/to/config.toml`
   - Support setting default values for all command-line arguments
   - Use standard locations for config file if not specified
-    - `$XDG_CONFIG_HOME/memo/config.toml`
-    - Fallback to `$HOME/.config/memo/config.toml`
+    - `$XDG_CONFIG_HOME/shmemo/config.toml`
+    - Fallback to `$HOME/.config/shmemo/config.toml`
 - [ ] Support for different hashing algorithms
   - e.g. `--hash sha256` to use SHA-256 instead of default
 - [ ] Limit cache size

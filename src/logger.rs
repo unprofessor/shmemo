@@ -10,11 +10,11 @@ impl Log for MemoLogger {
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             match record.level() {
-                Level::Error => eprintln!(":: memo :: ERROR: {}", record.args()),
-                Level::Warn => eprintln!(":: memo :: WARN: {}", record.args()),
-                Level::Info => eprintln!(":: memo :: {}", record.args()),
-                Level::Debug => eprintln!(":: memo :: DEBUG: {}", record.args()),
-                Level::Trace => eprintln!(":: memo :: TRACE: {}", record.args()),
+                Level::Error => eprintln!(":: shmemo :: ERROR: {}", record.args()),
+                Level::Warn => eprintln!(":: shmemo :: WARN: {}", record.args()),
+                Level::Info => eprintln!(":: shmemo :: {}", record.args()),
+                Level::Debug => eprintln!(":: shmemo :: DEBUG: {}", record.args()),
+                Level::Trace => eprintln!(":: shmemo :: TRACE: {}", record.args()),
             }
         }
     }

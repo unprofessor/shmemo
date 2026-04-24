@@ -37,7 +37,7 @@ use std::os::unix::fs::PermissionsExt;
 
 /// Check if memoization is disabled via environment variable
 ///
-/// Returns `true` if `MEMO_DISABLE=1`, otherwise `false`.
+/// Returns `true` if `SHMEMO_DISABLE=1`, otherwise `false`.
 ///
 /// # Examples
 ///
@@ -48,7 +48,7 @@ use std::os::unix::fs::PermissionsExt;
 /// }
 /// ```
 pub fn is_memo_disabled() -> bool {
-    std::env::var("MEMO_DISABLE")
+    std::env::var("SHMEMO_DISABLE")
         .map(|val| val == "1")
         .unwrap_or(false)
 }
@@ -72,7 +72,7 @@ pub fn get_cache_dir() -> Result<PathBuf> {
             .ok_or(MemoError::HomeNotFound)?
             .join(".cache")
     };
-    Ok(base.join("memo"))
+    Ok(base.join("shmemo"))
 }
 
 /// Ensure the cache directory exists with appropriate permissions
@@ -350,7 +350,7 @@ mod tests {
 
     fn setup_test_cache() -> (TempDir, PathBuf) {
         let temp_dir = TempDir::new().unwrap();
-        let cache_dir = temp_dir.path().join("memo");
+        let cache_dir = temp_dir.path().join("shmemo");
         (temp_dir, cache_dir)
     }
 
@@ -527,7 +527,7 @@ mod tests {
         let cache_dir = get_cache_dir().unwrap();
         std::env::remove_var("XDG_CACHE_HOME");
 
-        assert_eq!(cache_dir, xdg_path.join("memo"));
+        assert_eq!(cache_dir, xdg_path.join("shmemo"));
     }
 
     #[test]

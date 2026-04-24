@@ -30,14 +30,14 @@ impl TestEnv {
     ///
     /// The command is pre-configured with the test cache directory.
     fn cmd(&self) -> Command {
-        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("memo");
+        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("shmemo");
         cmd.env("XDG_CACHE_HOME", self.cache_dir.path());
         cmd
     }
 
     /// List all cache entries (digest directories) in sorted order
     fn list_cache_entries(&self) -> Vec<String> {
-        let memo_dir = self.cache_path().join("memo");
+        let memo_dir = self.cache_path().join("shmemo");
         if !memo_dir.exists() {
             return vec![];
         }
@@ -66,7 +66,7 @@ impl TestEnv {
 
     /// Read a cache file from within a digest directory
     fn read_cache_file(&self, digest: &str, filename: &str) -> Vec<u8> {
-        let path = self.cache_path().join("memo").join(digest).join(filename);
+        let path = self.cache_path().join("shmemo").join(digest).join(filename);
         fs::read(&path).unwrap()
     }
 
@@ -85,7 +85,7 @@ impl TestEnv {
     /// Run N concurrent invocations of memo with the same command. Returns the
     /// stderr output of all invocations concatenated (for diagnosing races).
     fn run_concurrent(&self, n: usize) -> String {
-        let bin = assert_cmd::cargo::cargo_bin!("memo");
+        let bin = assert_cmd::cargo::cargo_bin!("shmemo");
         let mut children = vec![];
         for _ in 0..n {
             let child = std::process::Command::new(&bin)
@@ -119,7 +119,7 @@ impl TestEnv {
     /// Assert that cache structure is valid (each directory has meta.json, stdout, stderr)
     fn assert_valid_cache_structure(&self) {
         let entries = self.list_cache_entries();
-        let memo_dir = self.cache_path().join("memo");
+        let memo_dir = self.cache_path().join("shmemo");
 
         for entry in &entries {
             let digest_dir = memo_dir.join(entry);
@@ -368,11 +368,11 @@ fn test_version_display() {
     let short_version = String::from_utf8_lossy(&output);
     println!("Short version:\n{}", short_version);
 
-    let short_regex = Regex::new(r#"^memo v[0-9]+\.[0-9]+\.[0-9]+.*"#).unwrap();
+    let short_regex = Regex::new(r#"^shmemo v[0-9]+\.[0-9]+\.[0-9]+.*"#).unwrap();
 
     assert!(
         short_regex.is_match(&short_version),
-        "Short version should contain a SemVer ('memo v*.*.*'). got: {}",
+        "Short version should contain a SemVer ('shmemo v*.*.*'). got: {}",
         short_version
     );
 
@@ -447,7 +447,7 @@ fn test_cache_directory_creation() {
     let env = TestEnv::new();
 
     // Cache dir should not exist initially
-    let memo_dir = env.cache_path().join("memo");
+    let memo_dir = env.cache_path().join("shmemo");
     assert!(!memo_dir.exists());
 
     // Run command
@@ -512,7 +512,7 @@ fn test_cache_file_structure() {
     let digest = &entries[0];
 
     // Verify all three files exist within the digest directory
-    let memo_dir = env.cache_path().join("memo").join(digest);
+    let memo_dir = env.cache_path().join("shmemo").join(digest);
     assert!(memo_dir.join("meta.json").exists());
     assert!(memo_dir.join("stdout").exists());
     assert!(memo_dir.join("stderr").exists());
@@ -771,7 +771,7 @@ fn test_verbose_short_flag() {
 fn test_quiet_mode() {
     let env = TestEnv::new();
 
-    // With --quiet, a missing command should exit with 1 but NOT print a :: memo :: ERROR
+    // With --quiet, a missing command should exit with 1 but NOT print a :: shmemo :: ERROR
     env.cmd()
         .arg("--quiet")
         .arg("this_command_does_not_exist_xyz123")

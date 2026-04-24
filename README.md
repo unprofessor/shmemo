@@ -1,15 +1,15 @@
-# memo
+# shmemo
 
 *memo* is a small program that memoizes (caches) shell command executions.
 
-Run a command through `memo` once and it records:
+Run a command through `shmemo` once and it records:
 
 - `stdout`
 - `stderr`
 - exit code
 
 Then, when you run the same command again from the same working directory,
-`memo` instantly replays the cached output instead of re-running the command.
+`shmemo` instantly replays the cached output instead of re-running the command.
 
 ## Why
 
@@ -28,7 +28,7 @@ cargo install --path . --locked
 
 ```bash
 cargo build --release
-./target/release/memo --help
+./target/release/shmemo --help
 ```
 
 ### Using GNU Guix
@@ -49,16 +49,16 @@ guix time-machine -C channels.scm -- shell -m manifest.scm
 
 ```bash
 # First run: executes the command and caches results
-memo echo "Hello"
+shmemo echo "Hello"
 
 # Second run: cache hit, output is replayed
-memo echo "Hello"
+shmemo echo "Hello"
 ```
 
 ### Verbose mode
 
 ```bash
-memo -v ls -la
+shmemo -v ls -la
 ```
 
 Verbose output goes to stderr and shows hits/misses, the computed digest, and
@@ -66,20 +66,20 @@ other information.
 
 ### Passing flags to the underlying command
 
-If the underlying command has flags that look like `memo` flags, use `--` to end
-`memo` option processing:
+If the underlying command has flags that look like `shmemo` flags, use `--` to end
+`shmemo` option processing:
 
 ```bash
-memo -- echo --verbose
+shmemo -- echo --verbose
 ```
 
 ### Complex commands
 
-Remember: `memo` executes a process directly; it does not invoke a shell unless
+Remember: `shmemo` executes a process directly; it does not invoke a shell unless
 you do.
 
 ```bash
-memo sh -c 'echo out; echo err >&2; exit 42'
+shmemo sh -c 'echo out; echo err >&2; exit 42'
 ```
 
 ## How caching works
@@ -97,8 +97,8 @@ A cache entry is keyed by **SHA-256(argv + cwd)**:
 
 Cache directory:
 
-- `$XDG_CACHE_HOME/memo/` if `XDG_CACHE_HOME` is set
-- otherwise `~/.cache/memo/`
+- `$XDG_CACHE_HOME/shmemo/` if `XDG_CACHE_HOME` is set
+- otherwise `~/.cache/shmemo/`
 
 ### On-disk layout
 
@@ -125,7 +125,7 @@ Concurrent cache misses for the same digest are handled without locks:
 
 ## Environment variables
 
-- `MEMO_DISABLE=1` — bypass caching and execute the command directly.
+- `SHMEMO_DISABLE=1` — bypass caching and execute the command directly.
 - `XDG_CACHE_HOME` — controls where cached results are stored.
 
 ## Security / safety
