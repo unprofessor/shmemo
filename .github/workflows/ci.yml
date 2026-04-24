@@ -54,18 +54,16 @@ jobs:
       run: |
         set -xeuo pipefail
 
-        guix build -f guix.scm --verbosity=3 > /tmp/guix-build.out
-        OUT_PATH=$(cat /tmp/guix-build.out)
-        echo "out_path=$OUT_PATH" >> $GITHUB_OUTPUT
+        guix shell -m manifest.scm -- sh -c "cargo build --release"
 
         # Create a release directory
-        mkdir -p target/artifact
+        mkdir -p target/artifact/bin
 
-        # Copy the binary from the store to the release directory
-        cp -r "$OUT_PATH"/bin target/artifact/bin
+        # Copy the binary to the release directory
+        cp target/release/shmemo target/artifact/bin/shmemo
 
         # Verify the binary exists
-        ls -la target/artifact
+        ls -la target/artifact/bin
 
     - name: Lint
       run: |
