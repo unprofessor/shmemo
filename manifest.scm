@@ -1,7 +1,7 @@
 (use-modules (guix packages)
              (gnu)
              (gnu packages rust)
-             (gnu packages certs)
+             (gnu packages nss)
              (gnu packages pkg-config)
              (gnu packages commencement)
              (gnu packages version-control))
