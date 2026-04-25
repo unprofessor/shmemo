@@ -1,6 +1,7 @@
 (use-modules (guix packages)
              (gnu)
              (gnu packages rust)
+             (gnu packages certs)
              (gnu packages pkg-config)
              (gnu packages commencement)
              (gnu packages version-control))
@@ -10,5 +11,6 @@
                           (list rust "cargo")
                           (list rust "tools")
                           rust-analyzer
+                          nss-certs
                           gcc-toolchain
                           git-minimal))
