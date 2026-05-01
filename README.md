@@ -21,7 +21,7 @@ network calls), when you want fast repeatable runs during development.
 ### From source (recommended)
 
 ```bash
-cargo install --path . --locked
+cargo install --git https://github.com/unprofessor/memo.git --locked
 ```
 
 ### Build a release binary
