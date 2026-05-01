@@ -94,7 +94,10 @@ mod tests {
 
         let shmemo: Shmemo = serde_json::from_str(json_str).unwrap();
         assert_eq!(shmemo.cmd, vec!["echo", "test"]);
-        assert_eq!(shmemo.env.get("SOME_VAR").unwrap().as_deref(), Some("value"));
+        assert_eq!(
+            shmemo.env.get("SOME_VAR").unwrap().as_deref(),
+            Some("value")
+        );
         assert_eq!(shmemo.env.get("UNSET_VAR").unwrap(), &None);
         assert_eq!(shmemo.exit_code, 42);
         assert_eq!(shmemo.digest, "def456");

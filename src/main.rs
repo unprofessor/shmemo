@@ -49,7 +49,7 @@ mod shmemo;
 
 use cache::{
     cleanup_temp_dirs, commit_cache_dir, create_temp_cache_dir, ensure_cache_dir, get_cache_dir,
-    is_shmemo_disabled, shmemo_complete, read_shmemo_metadata, stream_stderr, stream_stdout,
+    is_shmemo_disabled, read_shmemo_metadata, shmemo_complete, stream_stderr, stream_stdout,
 };
 use chrono::Utc;
 use clap::Parser;

@@ -23,7 +23,7 @@
 //! 4. Orphaned temp directories are cleaned up on startup
 
 use crate::constants::CACHE_DIR_PERMISSIONS;
-use crate::error::{ShmemoError, Result};
+use crate::error::{Result, ShmemoError};
 use crate::shmemo::Shmemo;
 use chrono::Utc;
 use std::fs::{self, File};

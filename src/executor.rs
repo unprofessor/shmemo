@@ -5,7 +5,7 @@
 //! outputs into memory while providing real-time console feedback.
 
 use crate::constants::FILE_PERMISSIONS;
-use crate::error::{ShmemoError, Result};
+use crate::error::{Result, ShmemoError};
 use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
@@ -159,7 +159,9 @@ pub fn execute_and_stream(
     stderr_path: &Path,
 ) -> Result<ExecutionResult> {
     if args.is_empty() {
-        return Err(ShmemoError::InvalidCommand("No command provided".to_string()));
+        return Err(ShmemoError::InvalidCommand(
+            "No command provided".to_string(),
+        ));
     }
 
     let stdout_file = create_secure_file(stdout_path)?;
@@ -228,7 +230,9 @@ pub fn execute_and_stream(
 /// ```
 pub fn execute_direct(args: &[&str]) -> Result<ExecutionResult> {
     if args.is_empty() {
-        return Err(ShmemoError::InvalidCommand("No command provided".to_string()));
+        return Err(ShmemoError::InvalidCommand(
+            "No command provided".to_string(),
+        ));
     }
 
     let status = Command::new(args[0]).args(&args[1..]).status()?;
