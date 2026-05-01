@@ -8,8 +8,8 @@ Run a command through `shmemo` once and it records:
 - `stderr`
 - exit code
 
-Then, when you run the same command again from the same working directory,
-`shmemo` instantly replays the cached output instead of re-running the command.
+Then, when you run the same command again, `shmemo` instantly replays the cached
+output instead of re-running the command.
 
 ## Why
 
@@ -21,7 +21,7 @@ network calls), when you want fast repeatable runs during development.
 ### From source (recommended)
 
 ```bash
-cargo install --git https://github.com/unprofessor/memo.git --locked
+cargo install --git https://github.com/unprofessor/shmemo.git --locked
 ```
 
 ### Build a release binary
@@ -36,9 +36,6 @@ cargo build --release
 To build with a reproducible environment using [GNU Guix](https://guix.gnu.org/):
 
 ```bash
-# Build the package
-guix time-machine -C channels.scm -- build -f guix.scm
-
 # Enter a development shell
 guix time-machine -C channels.scm -- shell -m manifest.scm
 ```
@@ -51,18 +48,61 @@ guix time-machine -C channels.scm -- shell -m manifest.scm
 # First run: executes the command and caches results
 shmemo echo "Hello"
 
-# Second run: cache hit, output is replayed
+# Second run: cache hit, output is replayed instantly
 shmemo echo "Hello"
 ```
 
 ### Verbose mode
 
+`-v` increases verbosity. Pass it up to three times for more detail:
+
 ```bash
-shmemo -v ls -la
+shmemo -v ls -la       # -v:   cache hit/miss, purge messages
+shmemo -vv ls -la      # -vv:  digest, temp dir operations
+shmemo -vvv ls -la     # -vvv: environment variable capture, etc.
 ```
 
-Verbose output goes to stderr and shows hits/misses, the computed digest, and
-other information.
+Verbose output goes to stderr.
+
+### Quiet mode
+
+```bash
+shmemo -q some-command
+```
+
+Suppresses all `shmemo` messages, including errors. Conflicts with `-v`.
+
+### TTL (time-to-live)
+
+Cache entries are permanent by default. Use `--ttl` to expire them automatically:
+
+```bash
+shmemo --ttl 1h curl https://api.example.com/data
+shmemo --ttl 30m expensive-script
+shmemo --ttl 10s flaky-command
+```
+
+Expired entries are treated as cache misses and re-executed.
+
+### Including environment variables in the cache key
+
+By default, environment variables are **not** part of the cache key. Use `-e` to
+include specific variables:
+
+```bash
+shmemo -e MY_VAR some-command
+shmemo -e VAR1,VAR2 some-command
+```
+
+Different values of `MY_VAR` will produce separate cache entries.
+
+### Purging the cache
+
+```bash
+shmemo --purge
+```
+
+Removes the entire cache directory. Mutually exclusive with running a command.
 
 ### Passing flags to the underlying command
 
@@ -86,12 +126,12 @@ shmemo sh -c 'echo out; echo err >&2; exit 42'
 
 ### Cache key
 
-A cache entry is keyed by **SHA-256(argv + cwd)**:
+A cache entry is keyed by **SHA-256(argv + env)**:
 
 - arguments are encoded in a canonical format (so `['a b']` differs from
   `['a','b']`)
-- current working directory is included so the same command in different
-  directories gets different entries
+- only environment variables explicitly listed via `-e` are included; the working
+  directory is **not** part of the key
 
 ### Cache location
 
@@ -114,6 +154,9 @@ Each cached command is stored in a directory named by its digest:
 
 `stdout`/`stderr` are stored as raw bytes (binary-safe).
 
+`meta.json` records the command, selected environment variables, exit code,
+timestamp, digest, and optional expiry time.
+
 ### Concurrency
 
 Concurrent cache misses for the same digest are handled without locks:
@@ -122,6 +165,7 @@ Concurrent cache misses for the same digest are handled without locks:
   (`<digest>.tmp.<pid>.<timestamp>`)
 - then atomically renames into place
 - the first one wins; the rest clean up their temp directories
+- orphaned temp directories older than 24 hours are removed at startup
 
 ## Environment variables
 
@@ -133,13 +177,14 @@ Concurrent cache misses for the same digest are handled without locks:
 Shmemo writes command output to disk **unencrypted**. Do not use it with commands
 that print sensitive data (tokens, credentials, private keys, PII, etc.).
 
-On \*nix, the cache directory and output files are created with restrictive
-permissions (owner-only).
+On \*nix, the cache directory is created with `0700` permissions and output files
+with `0600` (owner-only).
 
 ## Limitations
 
-- No TTL/expiration policy
-- No built-in cache pruning or "clear" subcommand (you can delete the cache
-  directory manually)
-- The cache key includes `argv` and `cwd`; it does not currently incorporate the
-  full process environment
+- No built-in cache pruning based on size or access time (LRU, etc.)
+- The cache key includes `argv` and any explicitly selected environment variables;
+  it does not automatically incorporate the working directory or the full process
+  environment
+- No cache format versioning: if the on-disk format changes, old entries become
+  unreadable without a migration path
